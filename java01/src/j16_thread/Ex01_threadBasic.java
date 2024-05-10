@@ -29,60 +29,61 @@ package j16_thread;
 class MyThread01 extends Thread {
 	@Override
 	public void run() {
-		//super.run();
-		for (int i=0; i<50; i++) {
+		// super.run();
+		for (int i = 0; i < 50; i++) {
 			System.out.printf("** Thread01 i=%d, Thread_Name=%s \n", i, getName());
 			// => 조상인 Thread 에 정의된 getName() 호출
-		} //for
-	} //run()
-} //MyThread01
+
+		} // for
+	} // run()
+} // MyThread01
 
 //** 실습2. Runnable interface 구현
 class MyThread02 implements Runnable {
-	
+
 	@Override
 	public void run() {
-		for (int i=0; i<50; i++) {
+		for (int i = 0; i < 50; i++) {
 			System.out.printf("** Thread02 i=%d, Thread_Name=%s \n", i, Thread.currentThread().getName());
 			// => 조상인 Thread 에 정의된 getName() 호출
-		} //for
-	} //run()
-	
-} //MyThread02
+		} // for
+	} // run()
+
+} // MyThread02
 
 public class Ex01_threadBasic {
 
 	public static void main(String[] args) {
-		// Test1) Thread 
+		// Test1) Thread
 		// => 1.1) 생성
-		MyThread01 t01 = new MyThread01();
-		Thread t02 = new MyThread01(); // 다형성적용가능
-		
+//		MyThread01 t01 = new MyThread01();
+//		Thread t02 = new MyThread01(); // 다형성적용가능
+
 		// => 1.2) 실행
 		// => start() 호출 : thread Start -> run() 메서드 실행
-		//t01.start();
-		//t02.start();
-		
+//		t01.start();
+//		t02.start();
+
 		// => 비교 : run() 호출
-		// => multi thread 는 실행되지 않고 main 이 일반 메서드 호출 & 실행.  
-		//    thread 적용없이 순서대로 실행 
-		//t01.run();
-		//t02.run();
-		
+		// => multi thread 는 실행되지 않고 main 이 일반 메서드 호출 & 실행.
+		// thread 적용없이 순서대로 실행
+//		t01.run();
+//		t02.run();
+
 		// Test2) Runnable
 		// => 생성 1단계 : 일반클래스 (필요한 Thread 메서드 접근불가)
 		MyThread02 r01 = new MyThread02();
-		//Runnable r02 = new MyThread02();
+		Runnable r02 = new MyThread02();
 		// => 생성 2단계 : Thread 클래스 화
 		// => Thread 클래스의 생성자 중 Runnable을 매개변수로 하는 생성자가 있음
-		//    생성자 Thread(Runnable target)
+		// 생성자 Thread(Runnable target)
 		Thread tr01 = new Thread(r01);
 		Thread tr02 = new Thread(new MyThread02());
 		tr01.start();
 		tr02.start();
-		
+
 		System.out.println("** Program 정상종료 **");
 
-	} //main
+	} // main
 
-}//class
+}// class
