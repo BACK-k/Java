@@ -1,8 +1,8 @@
 package j20_Stream;
-import java.util.List;
-import java.util.Arrays;
-import java.util.function.BinaryOperator;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.BinaryOperator;
 
 /* stream 의 병렬처리 메서드
 => stream
@@ -23,26 +23,21 @@ import java.util.function.BinaryOperator;
 => 결론
 	대용량의 데이터를 필터링하거나 변환해야 할때 'parallelStream()' 을 사용하면 병렬로 처리하여
 	성능을 향상시킬 수 있지만 모든 상황에서 병렬처리가 항상 더 효율적인 것은 아니므로, 
-	실제 상황에 맞게 선택하는 것이 중요함.
-  
+	실제 상황에 맞게 선택하는 것이 중요함
 */
 
-
 class S04_02ReduceParallelStream {
-    public static void main(String[] args) {
-        List<String> ls = Arrays.asList("Box", "Simple", "Complex", "Robot");
-        
-        BinaryOperator<String> lc = 
-            (s1, s2) -> { 
-               if(s1.length() > s2.length())
-                   return s1;
-               else 
-                   return s2;                   
-            };
-        
-        String str = ls.parallelStream()
-                      .reduce("", lc);
-      
-        System.out.println(str);
-    }
+	public static void main(String[] args) {
+		List<String> ls = Arrays.asList("Box", "Simple", "Complex", "Robot");
+
+		BinaryOperator<String> lc = (s1, s2) -> {
+			if (s1.length() > s2.length())
+				return s1;
+			else
+				return s2;
+		};
+
+		String str = ls.parallelStream().reduce("", lc);
+		System.out.println(str);
+	}
 }
