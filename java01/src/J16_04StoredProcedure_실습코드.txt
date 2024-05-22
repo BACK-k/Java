@@ -1,0 +1,652 @@
+https://daegwonkim.tistory.com/179
+https://mag1c.tistory.com/241
+https://daegwonkim.tistory.com/179
+https://blog.naver.com/chdlgusdn/223346978516
+
+https://jmkim9.tistory.com/38 (Function)
+https://blog.duveen.me/20 (Cursor)
+https://blog.naver.com/chdlgusdn/223348102949 (트리거)
+
+https://jungeunpyun.tistory.com/64 (Event Scheduler)
+https://goodgods.tistory.com/868 (Event Scheduler)
+=============================
+** 07-1
+-- 스토어드 프로시저 생성
+
+DELIMITER $$
+CREATE PROCEDURE doit_proc()
+BEGIN
+	DECLARE customer_cnt INT;
+	DECLARE add_number INT;
+	
+	SET customer_cnt = 0;
+	SET add_number = 100;
+	SET customer_cnt = (SELECT COUNT(*) FROM member);
+	
+	SELECT customer_cnt + add_number;
+END $$
+DELIMITER ;
+
+-- 스토어드 프로시저 호출
+CALL doit_proc();
+
+-- 스토어드 프로시저 내용 확인
+SHOW CREATE PROCEDURE doit_proc;
+
+-- 스토어드 프로시저 삭제
+DROP PROCEDURE doit_proc;
+
+==============================================
+** 07-2 ( 제어문 IF, Case, While 등) 
+
+-- IF 문을 활용한 데이터 조회
+SELECT store_id, IF(store_id = 1, '일', '이') AS one_two FROM customer GROUP BY store_id;
+=> SELECT jno, IF(jno = 1, 2, 3, 4 ) AS projectJno FROM member GROUP BY jno;
+
+-- IF 문을 실행하기 위한 스토어드 프로시저 생성
+DROP PROCEDURE IF EXISTS doit_if;
+
+DELIMITER $$
+CREATE PROCEDURE doit_if (jno_input INT)
+BEGIN
+	DECLARE jno_cnt INT;
+	DECLARE s_jno_one INT;
+	DECLARE s_jno_two INT;
+	SET jno_cnt = (SELECT count(*) FROM member WHERE jno = jno_input GROUP BY jno);
+	
+	IF jno_input = 1 THEN SET s_jno_one = 1;
+		ELSE SET s_jno_two = 2;
+	END IF;
+	
+	SELECT jno_input, jno_cnt, s_jno_one, s_jno_two;
+END $$
+DELIMITER ;
+
+-- 스토어드 프로시저 실행
+CALL doit_if(1);
+DROP PROCEDURE doit_if;
+
+
+-- CASE 문을 활용한 데이터 조회
+SELECT 
+	customer_id, SUM(amount) AS amount,
+	CASE
+		WHEN SUM(amount) >= 150 THEN 'VVIP'
+		WHEN SUM(amount) >= 120 THEN 'VIP'
+		WHEN SUM(amount) >= 100 THEN 'GOLD'
+		WHEN SUM(amount) >= 80 THEN 'SILVER'
+		ELSE 'BRONZE'
+	END AS customer_level
+FROM payment GROUP BY customer_id;
+
+-- CASE 문을 실행하기 위한 스토어드 프로시저 생성
+DROP PROCEDURE IF EXISTS doit_case;
+
+DELIMITER $$
+CREATE PROCEDURE doit_case (customer_id_input INT)
+BEGIN
+	DECLARE customer_level VARCHAR(10);
+	DECLARE amount_sum float;
+
+	SET amount_sum = (SELECT SUM(amount) FROM payment WHERE customer_id = customer_id_input GROUP BY customer_id);
+	
+	CASE
+		WHEN amount_sum >= 150 THEN SET customer_level = 'VVIP';
+		WHEN amount_sum >= 120 THEN SET customer_level = 'VIP';
+		WHEN amount_sum >= 100 THEN SET customer_level = 'GOLD';
+		WHEN amount_sum >= 80 THEN SET customer_level = 'SILVER';
+		ELSE SET customer_level = 'BRONZE';
+	END CASE;
+	
+	SELECT customer_id_input as customer_id, amount_sum, customer_level;
+END $$
+DELIMITER ;
+
+-- 스토어드 프로시저 실행
+CALL doit_case(4);
+
+-- WHILE 문을 실행하기 위한 스토어드 프로시저 생성
+DROP PROCEDURE IF EXISTS doit_while;
+
+DELIMITER $$
+CREATE PROCEDURE doit_while (param_1 INT, param_2 INT)
+BEGIN
+	DECLARE i INT;
+	DECLARE while_sum INT;
+	
+	SET i = 1;
+	SET while_sum = 0;
+	
+	WHILE (i <= param_1) DO
+		SET while_sum = while_sum + param_2;
+		SET i = i + 1;
+	END WHILE;
+	
+	SELECT while_sum;
+END $$
+DELIMITER ;
+
+-- 스토어드 프로시저 실행
+CALL doit_while(10, 3);
+
+-- WHILE ~ LEAVE 문을 실행하기 위한 스토어드 프로시저 생성
+DROP PROCEDURE IF EXISTS doit_while;
+
+DELIMITER $$
+CREATE PROCEDURE doit_while (param_1 INT, param_2 INT)
+BEGIN
+	DECLARE i INT;
+	DECLARE while_sum INT;
+	
+	SET i = 1;
+	SET while_sum = 0;
+	
+	myWhile:
+		WHILE (i <= param_1) DO
+			SET while_sum = while_sum + param_2;
+			SET i = i + 1;
+			
+			IF (while_sum > 100) THEN LEAVE myWhile;
+			END IF;
+		END WHILE;
+
+	SELECT while_sum;
+END $$
+DELIMITER ;
+
+-- 스토어드 프로시저 실행
+CALL doit_while(1000, 3);
+
+-- 동적 SQL을 활용한 데이터 조회
+PREPARE dynamic_query FROM 'SELECT * FROM customer WHERE customer_id = ?';
+SET @a = 1;
+
+EXECUTE dynamic_query USING @a;
+
+DEALLOCATE PREPARE dynamic_query;
+
+-- 동적 SQL을 실행하기 위한 스토어드 프로시저 생성
+DROP PROCEDURE IF EXISTS doit_dynamic;
+
+DELIMITER $$
+CREATE PROCEDURE doit_dynamic (t_name VARCHAR(50), c_name VARCHAR(50), customer_id INT)
+BEGIN
+	SET @t_name = t_name;
+	SET @c_name = c_name;
+	SET @customer_id = customer_id;
+	SET @sql = CONCAT('SELECT ', @c_name, ' FROM ', @t_name, ' WHERE customer_id =', @customer_id);
+	
+	SELECT @sql;
+	
+	PREPARE dynamic_query FROM @sql;
+	
+	EXECUTE dynamic_query;
+	
+	DEALLOCATE PREPARE dynamic_query;
+END $$
+DELIMITER ;
+
+-- 스토어드 프로시저 실행
+CALL doit_dynamic('payment', '*', 1);
+
+==============================================
+
+** 07-3 (Index)
+
+-- 실습을 위한 테이블과 데이터 생성
+USE doitsql;
+
+DROP TABLE IF EXISTS doit_clusterindex;
+
+CREATE TABLE doit_clusterindex (
+col_1 INT,
+col_2 VARCHAR(50),
+col_3 VARCHAR(50)
+);
+
+INSERT INTO doit_clusterindex VALUES (2, '사자', 'lion');
+INSERT INTO doit_clusterindex VALUES (5, '호랑이', 'tiger');
+INSERT INTO doit_clusterindex VALUES (3, '얼룩말', 'zbera');
+INSERT INTO doit_clusterindex VALUES (4, '코뿔소', 'Rhinoceros');
+INSERT INTO doit_clusterindex VALUES (1, '거북이', 'turtle');
+
+SELECT * FROM doit_clusterindex;
+
+-- 기본키(기본 인덱스) 생성
+ALTER TABLE doit_clusterindex
+	ADD CONSTRAINT PRIMARY KEY (col_1);
+
+SELECT * FROM doit_clusterindex;
+
+-- 새로운 데이터 입력
+INSERT INTO doit_clusterindex VALUES (0, '물고기', 'fish');
+
+SELECT * FROM doit_clusterindex;
+
+-- col_2 열로 인덱스 변경
+ALTER TABLE doit_clusterindex
+	DROP PRIMARY KEY,
+	ADD CONSTRAINT PRIMARY KEY doit_clusterindex (col_2);
+
+SELECT * FROM doit_clusterindex;
+
+-- col_3 열로 인덱스 변경
+ALTER TABLE doit_clusterindex
+	DROP PRIMARY KEY,
+	ADD CONSTRAINT PRIMARY KEY (col_3);
+
+SELECT * FROM doit_clusterindex;
+
+-- 복합키 인덱스 생성
+ALTER TABLE doit_clusterindex
+	DROP PRIMARY KEY,
+	ADD CONSTRAINT PRIMARY KEY(col_1, col_3);
+
+SHOW INDEX FROM doit_clusterindex;
+
+-- 인덱스 삭제
+ALTER TABLE doit_clusterindex DROP PRIMARY KEY;
+
+SHOW INDEX FROM doit_clusterindex;
+
+-- 실습을 위한 테이블과 데이터 생성
+USE doitsql;
+
+DROP TABLE IF EXISTS doit_nonclusterindex;
+
+CREATE TABLE doit_nonclusterindex (
+col_1 INT,
+col_2 VARCHAR(50),
+col_3 VARCHAR(50)
+);
+
+INSERT INTO doit_nonclusterindex VALUES (2, '사자', 'lion');
+INSERT INTO doit_nonclusterindex VALUES (5, '호랑이', 'tiger');
+INSERT INTO doit_nonclusterindex VALUES (3, '얼룩말', 'zbera');
+INSERT INTO doit_nonclusterindex VALUES (4, '코뿔소', 'Rhinoceros');
+INSERT INTO doit_nonclusterindex VALUES (1, '거북이', 'turtle');
+
+SELECT * FROM doit_nonclusterindex;
+
+-- 비클러스터형 인덱스 생성
+CREATE INDEX ix_doit_nonclusterindex_1 ON doit_nonclusterindex (col_1);
+
+SELECT * FROM doit_nonclusterindex;
+
+-- 새로운 데이터 입력
+INSERT INTO doit_nonclusterindex VALUES (0, '물고기', 'fish');
+
+SELECT * FROM doit_nonclusterindex;
+
+-- 각 열별로 인덱스 생성
+CREATE INDEX ix_doit_nonclusterindex_2 ON doit_nonclusterindex (col_2);
+CREATE INDEX ix_doit_nonclusterindex_3 ON doit_nonclusterindex (col_3);
+
+SELECT * FROM doit_nonclusterindex;
+
+-- 복합키 인덱스 생성
+CREATE INDEX ix_doit_nonclusterindex_1_2 ON doit_nonclusterindex (col_1, col_2);
+CREATE INDEX ix_doit_nonclusterindex_1_3 ON doit_nonclusterindex (col_1, col_3);
+
+SHOW INDEX FROM doit_nonclusterindex;
+
+-- 인덱스 삭제
+DROP INDEX ix_doit_nonclusterindex_1_2 ON doit_nonclusterindex;
+DROP INDEX ix_doit_nonclusterindex_1_3 ON doit_nonclusterindex;
+
+SHOW INDEX FROM doit_nonclusterindex;
+
+==============================================
+** 07-4 (뷰)
+
+-- 일부 열을 보여주는 뷰 생성
+CREATE VIEW v_customer
+AS
+	SELECT first_name, last_name, email FROM customer;
+
+SELECT* FROM v_customer;
+
+-- 2개의 테이블을 조인해 원하는 데이터를 보여주는 뷰 생성
+CREATE VIEW v_payuser
+AS
+	SELECT 
+		first_name, last_name, email, amount, address_id
+	FROM customer AS a
+		INNER JOIN (
+			SELECT 
+				customer_id, SUM(amount) AS amount 
+			FROM payment
+			GROUP BY customer_id
+			) AS b ON a.customer_id = b.customer_id;
+
+SELECT * FROM v_payuser;
+
+-- 뷰 테이블과 일반 테이블 조인
+SELECT a.*, b.*
+FROM v_payuser AS a
+	INNER JOIN address AS b ON a.address_id = b.address_id;
+
+-- 뷰 수정
+ALTER VIEW v_customer
+AS
+	SELECT 
+		customer_id, first_name, last_name, email, address_id
+	FROM customer;
+
+SELECT * FROM v_customer;
+
+-- v_customer 뷰 생성 및 교체
+CREATE OR REPLACE VIEW v_customer
+AS
+	SELECT '뷰가 이미 있으면 수정, 없으면 생성';
+
+SELECT * FROM v_customer;
+
+-- 뷰 정보 확인
+DESCRIBE v_payuser;
+
+-- SQL 문으로 뷰 정보 확인
+SHOW CREATE VIEW v_payuser;
+
+-- 뷰 삭제
+DROP VIEW v_customer;
+DROP VIEW v_payuser;
+
+-- 테이블과 뷰 생성
+CREATE TABLE tbl_a (
+col_1 INT NOT NULL,
+col_2 VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE tbl_b (
+col_1 INT NOT NULL,
+col_2 VARCHAR(50) NOT NULL
+);
+
+INSERT INTO tbl_a VALUES(1, 'tbl_a_1');
+INSERT INTO tbl_a VALUES(2, 'tbl_a_2');
+INSERT INTO tbl_b VALUES(1, 'tbl_b_1');
+INSERT INTO tbl_b VALUES(2, 'tbl_b_2');
+
+CREATE VIEW v_tbl_a
+AS
+	SELECT col_1, col_2 FROM tbl_a;
+
+
+SELECT * FROM v_tbl_a;
+
+-- 단일 뷰 데이터 수정
+SET SQL_SAFE_UPDATES = 0;
+
+UPDATE v_tbl_a SET col_2 = 'tbl_a 열 수정' WHERE col_1 = 1;
+
+SELECT * FROM v_tbl_a;
+
+-- 단일 뷰 데이터 추가
+INSERT v_tbl_a VALUES (3, 'tbl_a_3');
+
+SELECT * FROM v_tbl_a;
+
+-- 단일 뷰 데이터 삭제
+DELETE FROM v_tbl_a WHERE col_1 = 3;
+
+SELECT * FROM v_tbl_a;
+
+-- 새로운 뷰 생성 후 데이터 추가
+CREATE VIEW v_tbl_a2
+AS
+	SELECT col_1 FROM tbl_a;
+
+INSERT v_tbl_a2 VALUES (5);
+
+-- 복합 뷰 생성
+CREATE VIEW v_tbl_a_b
+AS
+	SELECT
+		a.col_1 as a_col_1,
+		a.col_2 as a_col_2,
+		b.col_2 as b_col_2
+	FROM tbl_a AS a
+		INNER JOIN tbl_b AS b ON a.col_1 = b.col_1;
+
+
+SELECT * FROM v_tbl_a_b;
+
+-- 복합 뷰 데이터 수정
+UPDATE v_tbl_a_b SET a_col_2 = 'tbl_a 컬럼 수정', b_col_2 = 'tbl_b 컬럼 수정' WHERE a_col_1 = 1;
+
+-- 복합 뷰 데이터 입력
+INSERT v_tbl_a_b VALUES (3, 'tbl_a_3', 'tbl_b_3');
+
+-- 참조 테이블 삭제
+DROP TABLE tbl_a;
+
+-- 참조 테이블 삭제된 뷰 조회
+SELECT * FROM v_tbl_a_b;
+
+-- 뷰 정보 확인
+CHECK TABLE tbl_a_b;
+
+==============================================
+
+** Stored Function 특징
+① MySQL 서버에 저장되는 함수로, 입력 매개변수를 받아 특정 작업을 수행하고 결과를 반환함.
+② 이를 통해 복잡한 SQL 로직을 모듈화하고 재사용할 수 있음.
+③ Stored Function은 SQL 문에서 호출할 수 있으며, 트랜잭션 안전성과 보안성이 보장됨.
+
+==============================================
+** 07-5
+
+-- 함수 생성 권한 부여
+SET GLOBAL log_bin_trust_function_creators = 1;
+
+-- 스토어드 함수 생성
+USE doitsql;
+
+DROP FUNCTION IF EXISTS user_sum;
+
+DELIMITER $$
+CREATE FUNCTION user_sum(num_1 INT, num_2 INT)
+RETURNS INT
+BEGIN
+	RETURN num_1 + num_2;
+END $$
+DELIMITER ;
+
+-- 스토어드 함수 호출
+SELECT user_sum (1, 5);
+
+-- 스토어드 함수 내용 확인
+SHOW CREATE FUNCTION user_sum;
+
+-- 스토어드 함수 삭제
+DROP FUNCTION user_sum;
+
+
+==============================================
+** SQL Cursor 
+
+DB 서버에서는 SQL 문을 실행할 때마다 처리(Parse, Execution)를 위한 메모리공간 (이 공간을 이후부터 SQL 커서라함)
+즉 사용자가 요청하는 데이터를 데이터베이스 버퍼 캐쉬에서 커서로 복사 해 온 후
+커서에서 원하는 데이터를 추출하여(Fetch) 후속 작업을 하게 된다는 의미.
+이 메모리 공간을 Private SQL Area 라고도 부른다.
+ 
+** MySql Cursor
+
+SP 내부에 있는 결과 집합들을 처리하는데 cursor를 사용할 수 있다. 
+cursor는 query에 의해 반환된 rows의 set을 반복하고 그에 따라 각 row를 처리할 수 있다.
+
+=> 특징
+- ReadOnly : cursor를 통해서 테이블에 있는 데이터를 업데이트 할 수 없다.
+- Non-scrollable : SELECT문에 의해 결정된 순서로 rows를 가져 올 수 있다. ( 반대 순서, 특정한 row를 건너 뛰거나 생략 할 수 없음)
+- Asensitive
+ . asensitive cursor, insensitive cursor 두 종류의 cursor가 있다. 
+   asensitive cursor는 실제 데이터를 가르키며, insensitive cursor는 데이터의 임시 복사본을 사용함. 
+   그러므로 임시 복사본을 만들지 않는 asensitive cursor는 insensitive cursor보다 빠르게 수행한다. 
+    
+    그러나 다른 connections으로 부터 데이터를 만드는 것 같은 변화가 생긴다면 
+     asensitive cursor가 사용하고 있는 데이터에 영향을 받을 수 있기 때문에 insensitive cursor 가 필요한 경우가 있으며
+     만약 asensitive cursor에서 사용하고 있는 데이터를 업데이트 하지 않는다면 안전하다. 
+
+=> Stored Procedures, Stored Functions, Triggers에서 MySQL cursor를 사용할 수 있다.
+
+==============================================
+
+-- 커서 생성
+DROP PROCEDURE IF EXISTS doit_cursor;
+
+DELIMITER $$
+CREATE PROCEDURE doit_cursor()
+BEGIN
+	DECLARE endOfRow BOOLEAN DEFAULT FALSE; -- 마지막 커서 행인지를 저장하기 위한 변수 설정(기본값: FALSE)
+	
+	-- 커서에 사용할 변수
+	DECLARE user_payment_id INT; -- payment_id를 저장할 변수
+	DECLARE user_amount DECIMAL(10,2) DEFAULT 0; -- amount를 저장할 변수
+	DECLARE idCursor CURSOR FOR -- 커서 선언
+	
+	SELECT payment_id FROM payment WHERE staff_id = 1;
+	
+	-- 반복 조건 선언
+	DECLARE CONTINUE HANDLER -- 행의 끝이면 endOfRow 변수에 TRUE 대입
+	FOR NOT FOUND SET endOfRow = TRUE;
+	
+	-- 커서 열기
+	OPEN idCursor;
+	
+	-- 반복 구문
+	sum_loop : LOOP
+		FETCH idCursor INTO user_payment_id; -- 첫 번째 데이터 가져오기
+		
+		IF endOfRow THEN
+			LEAVE sum_loop; -- 마지막 행이면 종료
+		END IF;
+	
+		-- 데이터 처리
+		SET user_amount = user_amount + (SELECT amount FROM payment WHERE payment_id = user_payment_id);
+	
+	END LOOP sum_loop;
+	
+	-- 데이터 결과 반환
+	SELECT user_amount;
+	
+	-- 커서 닫기
+	CLOSE idCursor;
+END$$
+DELIMITER ;
+
+-- 스토어드 프로시저 실행
+CALL doit_cursor();
+
+-- 결과 비교를 위한 쿼리 입력
+SELECT sum(amount) FROM payment WHERE staff_id = 1;
+
+==============================================
+
+*** 트리거(Trigger)
+
+=> 데이터베이스 트리거는 테이블에 대한 이벤트에 반응해 자동으로 실행되는 작업을 의미한다.
+   트리거는 INSERT,DELETE,UPDATE 같은 DML(데이터 조작 언어) 의 데이터 상태 관리를
+   자동화하는데 사용된다. 
+   방아쇠를 당기면 총에서 총알이 발사되듯, 트리거가 실행되면 일련의 작업을 수행하게 됨.
+
+=> 트리거의 유형 
+- 행 트리거 
+  : 테이블 안의 영향을 받은 행 각각에 대해 실행된다.
+    변경 전 또는 변경 후의 행은 OLD, NEW 라는 가상 줄 변수를 사용하여 읽을 수 있다.
+- 문장 트리거 
+   : INSERT, UPDATE, DELETE 문제 대해 한 번만 실행된다.
+
+=> 트리거의 장점
+ - 데이터 무결성 강화(참조 무결성)
+ - 업무 규칙의 설정
+ - 검사 기능의 확장
+
+​=> 트리거의 단점
+ - 유지보수가 어려움.
+ - 예상치 못한 오류가 발생할 수 있음.
+ 
+==============================================
+
+** 07-6  (트리거)
+
+-- 테이블 생성
+USE doitsql;
+
+CREATE TABLE tbl_trigger_1 (
+col_1 INT,
+col_2 VARCHAR(50)
+);
+
+CREATE TABLE tbl_trigger_2 (
+col_1 INT,
+col_2 VARCHAR(50)
+);
+
+INSERT INTO tbl_trigger_1 VALUES (1, '데이터 1 입력');
+
+SELECT * FROM tbl_trigger_1;
+
+-- UPDATE 발생 시 동작하는 트리거 생성
+DELIMITER $$
+CREATE TRIGGER dot_update_tirgger
+AFTER UPDATE
+	ON tbl_trigger_1
+	FOR EACH ROW
+BEGIN
+	INSERT INTO tbl_trigger_2 VALUES (OLD.col_1, OLD.col_2);
+END $$
+DELIMITER ;
+
+-- 트리거 실행
+SET SQL_SAFE_UPDATES = 0;
+
+UPDATE tbl_trigger_1 SET col_1 = 2, col_2 = '1을 2로 수정';
+
+SELECT * FROM tbl_trigger_2;
+
+SELECT * FROM tbl_trigger_1;
+
+==============================================
+
+*** Event Scheduler
+
+주기적으로 DB에 어떤 규칙적인 작업을 해주어야 할 때가 있다. 
+예를 들어 지속적으로 쌓이는 temporary 데이터가 있는데 해당 테이블을 자주 비워줌으로써 용량 낭비를 방지하고자 한다. 
+이때 개발자가 매번 직접 테이블을 비울 필요 없이 DB 자체에 어떤 이벤트를 걸어주고
+해당 이벤트가 주기적으로 반복되게끔 할 수 있고 이것이  Event Scheduler 이다.
+
+MySQL의 event는 Oracle의 job이라고 보면 됨.  
+
+
+우선 mysql 자체적으로 이벤트 스케쥴러 사용이 가능하게끔 설정되어 있는지 확인한다.
+=> SHOW VARIABLES LIKE 'event%';
+
+ Value가 OFF가 되어 있으면 아래 명령어를 통해 설정을 ON으로 바꿔주어야 이벤트 스케쥴러가 동작한다.
+=> SET GLOBAL event_scheduler = ON;
+
+
+이미 생성되어 있는 이벤트 스케줄러를 확인한다.
+=> SELECT * FROM information_schema.events;
+
+
+
+이벤트 스케쥴러 생성
+ 
+CREATE EVENT ip_reset
+ON SCHEDULE EVERY 1 WEEK
+-- STARTS '2021-06-23 02:09:00'
+COMMENT 'ip 정보 삭제'
+DO
+TRUNCATE TABLE ip;
+
+이벤트 삭제
+DROP event ip_reset;
+
+=> 예제는 
+https://goodgods.tistory.com/868 참고
+===================================================
+
+
+
+
